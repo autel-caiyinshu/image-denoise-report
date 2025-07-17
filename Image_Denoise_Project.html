@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Image Denoise Project Workflow</title>
+  <style>
+    body { font-family: 'Segoe UI',Arial,sans-serif; margin: 40px; background: #f7f9fa; color: #232323; }
+    h1, h2, h3, h4 { color: #2c3e50; }
+    pre { background: #272822; color: #f8f8f2; padding: 12px; border-radius: 8px; overflow-x: auto;}
+    table { border-collapse: collapse; width: 100%; margin: 1em 0;}
+    th, td { border: 1px solid #ddd; padding: 6px 12px; }
+    th { background: #2c3e50; color: #fff; }
+    tr:nth-child(even) { background: #f4f4f4; }
+    .todo { background: #fff3cd; }
+    .success { color: #28a745; }
+    .fail { color: #dc3545; }
+    .highlight { background: #fbeee6; border-left: 4px solid #e67e22; padding: 0.8em 1em;}
+  </style>
+</head>
+<body>
+
+<h1>Image Denoise Project Workflow</h1>
+<p><strong>Author:</strong> R10898 Team</p>
+<p><strong>Date:</strong> 2025-07-17</p>
+
+<hr>
+
+<h2>Project Overview</h2>
+<p>
+  This document outlines the complete workflow for the <strong>Image Denoise Project</strong>, which processes raw image data collected by the technical team for noise reduction analysis and training dataset preparation.
+</p>
+
+<h3>Workflow Summary</h3>
+<p>
+  The project consists of several automated processing steps followed by manual quality control and final data organization for training purposes.
+</p>
+
+<hr>
+
+<h2>Data Access &amp; Setup</h2>
+
+<h3>Initial Data Collection</h3>
+<ul>
+  <li>Raw image data is collected by the technical team at the <b>119 server</b> and accessed from the <b>114 server</b>.</li>
+  <li><span class="todo">TODO: How to distinguish used and unused data? 114 Writing permission?</span></li>
+</ul>
+
+<pre><code># Access raw data from 119 server to 114 server
+# Raw data location: /mnt/data/R10898/ai_jz2_test
+ls -la /mnt/data/R10898/ai_jz2_test
+</code></pre>
+
+<hr>
+
+<h2>Step 1: Format Conversion (Raw → PNG)</h2>
+
+<ul>
+  <li><b>Script:</b> /mnt/sfs_turbo/R10898/n2n_dataprocess/yuv420nv12_processor.py</li>
+  <li><b>Duration:</b> ~15 minutes</li>
+  <li><b>Purpose:</b> Convert raw image format to PNG folders</li>
+</ul>
+
+<table>
+  <tr><th>Parameter</th><th>Path</th></tr>
+  <tr><td><b>Input</b></td><td>/mnt/data/R10898/ai_jz2_test</td></tr>
+  <tr><td><b>Output</b></td><td>/mnt/data/R10898/ai_jz2_test_PNG</td></tr>
+  <tr><td><b>Summary</b></td><td>/mnt/data/R10898/ai_jz2_test_PNG/yuv_png_20250717_022208.txt</td></tr>
+</table>
+
+<h4>Execution</h4>
+<pre><code># Execute YUV to PNG conversion
+python /mnt/sfs_turbo/R10898/n2n_dataprocess/yuv420nv12_processor.py \
+  --input /mnt/data/R10898/ai_jz2_test \
+  --output /mnt/data/R10898/ai_jz2_test_PNG
+
+# Check conversion summary
+cat /mnt/data/R10898/ai_jz2_test_PNG/yuv_png_20250717_022208.txt
+</code></pre>
+
+<h4>Validation</h4>
+<pre><code># Verify output structure
+echo "=== PNG Conversion Results ==="
+find /mnt/data/R10898/ai_jz2_test_PNG -type d -maxdepth 2 | head -10
+echo "Total PNG folders created:"
+find /mnt/data/R10898/ai_jz2_test_PNG -type d -name "*PNG*" | wc -l
+</code></pre>
+
+<hr>
+
+<h2>Step 2: Random Sampling by ISO</h2>
+<ul>
+  <li><b>Script:</b> /mnt/sfs_turbo/R10898/n2n_dataprocess/random_sample_by_iso.py</li>
+  <li><b>Duration:</b> ~1 minute</li>
+  <li><b>Purpose:</b> Pull 50 PNG folders from each gain level</li>
+</ul>
+<table>
+  <tr><th>Parameter</th><th>Path</th></tr>
+  <tr><td><b>Input</b></td><td>/mnt/data/R10898/ai_jz2_test_PNG</td></tr>
+  <tr><td><b>Output</b></td><td>/mnt/data/R10898/ai_jz2_test_PNG_50</td></tr>
+  <tr><td><b>Summary</b></td><td>/mnt/data/R10898/ai_jz2_test_PNG_50/random_sampling_report_20250717_024530.txt</td></tr>
+</table>
+
+<h4>Execution</h4>
+<pre><code># Execute random sampling by ISO
+python /mnt/sfs_turbo/R10898/n2n_dataprocess/random_sample_by_iso.py \
+  --input /mnt/data/R10898/ai_jz2_test_PNG \
+  --output /mnt/data/R10898/ai_jz2_test_PNG_50 \
+  --samples_per_iso 50
+
+# Review sampling report
+cat /mnt/data/R10898/ai_jz2_test_PNG_50/random_sampling_report_20250717_024530.txt
+</code></pre>
+
+<h4>Sampling Analysis</h4>
+<div class="highlight">
+  Sampling completed successfully.<br>
+  Check the report file for detailed ISO distribution.
+</div>
+
+<hr>
+
+<h2>Step 3: PNG Set Structuring</h2>
+<ul>
+  <li><b>Script:</b> /mnt/sfs_turbo/R10898/n2n_dataprocess/process_png_sets_standalone.py</li>
+  <li><b>Duration:</b> ~15 minutes</li>
+  <li><b>Purpose:</b> Structure PNGs to sets and associate different images for camera movement detection</li>
+</ul>
+<table>
+  <tr><th>Parameter</th><th>Path</th></tr>
+  <tr><td><b>Input</b></td><td>/mnt/data/R10898/ai_jz2_test_PNG_50</td></tr>
+  <tr><td><b>Output</b></td><td>/mnt/data/R10898/ai_jz2_test_PNG_50_sets</td></tr>
+  <tr><td><b>Summary</b></td><td>/mnt/data/R10898/ai_jz2_test_PNG_50_sets/png_sets_processing_report_20250717_031501.txt</td></tr>
+</table>
+
+<h4>Execution</h4>
+<pre><code># Execute PNG set structuring
+python /mnt/sfs_turbo/R10898/n2n_dataprocess/process_png_sets_standalone.py \
+  --input /mnt/data/R10898/ai_jz2_test_PNG_50 \
+  --output /mnt/data/R10898/ai_jz2_test_PNG_50_sets
+
+# Review processing report
+echo "=== PNG Sets Processing Report ==="
+cat /mnt/data/R10898/ai_jz2_test_PNG_50_sets/png_sets_processing_report_20250717_031501.txt
+</code></pre>
+
+<h4>Set Structure Validation</h4>
+<pre><code># Analyze set structure
+echo "=== Set Structure Analysis ==="
+echo "Total sets created:"
+find /mnt/data/R10898/ai_jz2_test_PNG_50_sets -maxdepth 1 -type d | wc -l
+
+echo "Sample set structure:"
+find /mnt/data/R10898/ai_jz2_test_PNG_50_sets -maxdepth 2 -type d | head -10
+</code></pre>
+
+<hr>
+
+<h2>Manual Quality Control Phase</h2>
+
+<h3>Data Segmentation for Manual Review</h3>
+<p>
+After automated processing, the data requires manual quality assessment by interns.
+</p>
+<ol>
+  <li><b>Distribution:</b> PNG sets are distributed to interns for manual review.</li>
+  <li><b>Classification:</b> Interns manually categorize sets into:<br>
+    <span class="success">&#10004; Qualified folder:</span> High-quality image sets<br>
+    <span class="fail">&#10006; Unqualified folder:</span> Poor-quality image sets
+  </li>
+  <li><b>Collection:</b> Processed data collected from individual intern laptops</li>
+</ol>
+
+<pre><code># Prepare directories for manual review distribution
+echo "=== Manual Review Setup ==="
+echo "1. Create qualified/unqualified directories on intern laptops"
+echo "2. Distribute PNG sets for manual review"
+echo "3. Interns classify sets based on quality criteria"
+
+# Example directory structure for interns:
+# ~/manual_review/
+# ├── qualified/
+# ├── unqualified/
+# └── original_sets/
+</code></pre>
+
+<h3>Data Collection from Interns</h3>
+<pre><code># Collect manually processed data from interns
+# Merge back on 114 server to restore original directory structure
+
+echo "=== Data Collection Process ==="
+echo "1. Collect qualified/unqualified classifications from each intern"
+echo "2. Merge data back to 114 server"
+echo "3. Restore original directory structure with quality labels"
+</code></pre>
+
+<hr>
+
+<h2>Final Processing &amp; ISO Reorganization</h2>
+<ul>
+  <li><b>Script:</b> /mnt/sfs_turbo/R10898/n2n_dataprocess/reorganize_by_iso.py</li>
+  <li><b>Purpose:</b> Restructure datasets based on ISO values for training and generate distribution plot</li>
+  <li><span class="todo">TODO: Might need to adjust the "qualified" and PNGs folders level?</span></li>
+</ul>
+<table>
+  <tr><th>Parameter</th><th>Path</th></tr>
+  <tr><td><b>Input</b></td><td>/mnt/data/R10898/ai_jz2_test_PNG_50_sets</td></tr>
+  <tr><td><b>Output Dataset</b></td><td>/mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO</td></tr>
+  <tr><td><b>Output Plot</b></td><td>/mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO/iso_distribution_plot_20250717_033018.png</td></tr>
+</table>
+
+<h4>Execution</h4>
+<pre><code># Execute ISO-based reorganization
+python /mnt/sfs_turbo/R10898/n2n_dataprocess/reorganize_by_iso.py \
+  --input /mnt/data/R10898/ai_jz2_test_PNG_50_sets \
+  --output /mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO \
+  --generate_plot true
+
+echo "=== Final Dataset Structure ==="
+ls -la /mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO/
+</code></pre>
+
+<h4>ISO Distribution Analysis</h4>
+<div class="highlight">
+  === ISO Distribution Analysis ===<br>
+  Plot generated: iso_distribution_plot_20250717_033018.png<br>
+  Dataset organized by ISO values for training.<br>
+  Plot file location: /mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO/iso_distribution_plot_20250717_033018.png
+</div>
+
+<hr>
+
+<h2>Project Deliverables</h2>
+
+<h3>Final Distribution</h3>
+<ol>
+  <li><b>Training Dataset</b><br>
+    <b>Recipient:</b> 周哥<br>
+    <b>Content:</b> Restructured dataset organized by ISO values<br>
+    <b>Location:</b> /mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO
+  </li>
+  <li><b>Analysis Report</b><br>
+    <b>Recipient:</b> Data Collection Team<br>
+    <b>Content:</b> ISO distribution plot and processing summary<br>
+    <b>Location:</b> iso_distribution_plot_20250717_033018.png
+  </li>
+</ol>
+
+<pre><code>
+echo "=== Project Deliverables Summary ==="
+echo "1. Training Dataset for 周哥:"
+du -sh /mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO
+
+echo "2. ISO Distribution Plot for Collection Team:"
+ls -la /mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO/*.png
+</code></pre>
+
+<hr>
+
+<h2>Quality Metrics &amp; Summary</h2>
+
+<h3>Processing Statistics</h3>
+<table>
+  <caption>Image Denoise Project Processing Pipeline</caption>
+  <tr>
+    <th>Stage</th>
+    <th>Duration</th>
+    <th>Input Location</th>
+    <th>Output Location</th>
+  </tr>
+  <tr>
+    <td>Raw Data</td>
+    <td>N/A</td>
+    <td>/mnt/data/R10898/ai_jz2_test</td>
+    <td>N/A</td>
+  </tr>
+  <tr>
+    <td>PNG Conversion</td>
+    <td>~15 min</td>
+    <td>/mnt/data/R10898/ai_jz2_test</td>
+    <td>/mnt/data/R10898/ai_jz2_test_PNG</td>
+  </tr>
+  <tr>
+    <td>Random Sampling</td>
+    <td>~1 min</td>
+    <td>/mnt/data/R10898/ai_jz2_test_PNG</td>
+    <td>/mnt/data/R10898/ai_jz2_test_PNG_50</td>
+  </tr>
+  <tr>
+    <td>Set Structuring</td>
+    <td>~15 min</td>
+    <td>/mnt/data/R10898/ai_jz2_test_PNG_50</td>
+    <td>/mnt/data/R10898/ai_jz2_test_PNG_50_sets</td>
+  </tr>
+  <tr>
+    <td>Manual Review</td>
+    <td>Manual</td>
+    <td>/mnt/data/R10898/ai_jz2_test_PNG_50_sets</td>
+    <td>Intern laptops</td>
+  </tr>
+  <tr>
+    <td>ISO Organization</td>
+    <td>Variable</td>
+    <td>/mnt/data/R10898/ai_jz2_test_PNG_50_sets</td>
+    <td>/mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO</td>
+  </tr>
+</table>
+
+<h3>Outstanding TODOs</h3>
+<table>
+  <caption>Outstanding Project TODOs</caption>
+  <tr>
+    <th>Priority</th>
+    <th>Task</th>
+    <th>Location</th>
+    <th>Status</th>
+  </tr>
+  <tr>
+    <td>High</td>
+    <td>Resolve data usage tracking and 114 server writing permissions</td>
+    <td>Data Access Phase</td>
+    <td>Open</td>
+  </tr>
+  <tr>
+    <td

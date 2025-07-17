@@ -1,0 +1,356 @@
+---
+title: "Image Denoise Project Workflow"
+author: "R10898 Team"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: tango
+    code_folding: show
+  pdf_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE, warning = FALSE, message = FALSE)
+library(knitr)
+library(DT)
+library(ggplot2)
+```
+
+# Project Overview
+
+This document outlines the complete workflow for the **Image Denoise Project**, which processes raw image data collected by the technical team for noise reduction analysis and training dataset preparation.
+
+## Workflow Summary
+
+The project consists of several automated processing steps followed by manual quality control and final data organization for training purposes.
+
+---
+
+# Data Access & Setup
+
+## Initial Data Collection
+
+Raw image data is collected by the technical team at the **119 server** and accessed from the **114 server**.
+
+**TODO:** 🔍 *How to distinguish used and unused data? 114 Writing permission?*
+
+```{bash data-access}
+# Access raw data from 119 server to 114 server
+# Raw data location: /mnt/data/R10898/ai_jz2_test
+ls -la /mnt/data/R10898/ai_jz2_test
+```
+
+---
+
+# Step 1: Format Conversion (Raw → PNG)
+
+## Script Information
+- **Script**: `/mnt/sfs_turbo/R10898/n2n_dataprocess/yuv420nv12_processor.py`
+- **Duration**: ~15 minutes
+- **Purpose**: Convert raw image format to PNG folders
+
+## Input/Output
+
+| Parameter | Path |
+|-----------|------|
+| **Input** | `/mnt/data/R10898/ai_jz2_test` |
+| **Output** | `/mnt/data/R10898/ai_jz2_test_PNG` |
+| **Summary** | `/mnt/data/R10898/ai_jz2_test_PNG/yuv_png_20250717_022208.txt` |
+
+## Execution
+
+```{bash step1-conversion}
+# Execute YUV to PNG conversion
+python /mnt/sfs_turbo/R10898/n2n_dataprocess/yuv420nv12_processor.py \
+  --input /mnt/data/R10898/ai_jz2_test \
+  --output /mnt/data/R10898/ai_jz2_test_PNG
+
+# Check conversion summary
+cat /mnt/data/R10898/ai_jz2_test_PNG/yuv_png_20250717_022208.txt
+```
+
+## Validation
+
+```{bash step1-validation}
+# Verify output structure
+echo "=== PNG Conversion Results ==="
+find /mnt/data/R10898/ai_jz2_test_PNG -type d -maxdepth 2 | head -10
+echo "Total PNG folders created:"
+find /mnt/data/R10898/ai_jz2_test_PNG -type d -name "*PNG*" | wc -l
+```
+
+---
+
+# Step 2: Random Sampling by ISO
+
+## Script Information
+- **Script**: `/mnt/sfs_turbo/R10898/n2n_dataprocess/random_sample_by_iso.py`
+- **Duration**: ~1 minute
+- **Purpose**: Pull 50 PNG folders from each gain level
+
+## Input/Output
+
+| Parameter | Path |
+|-----------|------|
+| **Input** | `/mnt/data/R10898/ai_jz2_test_PNG` |
+| **Output** | `/mnt/data/R10898/ai_jz2_test_PNG_50` |
+| **Summary** | `/mnt/data/R10898/ai_jz2_test_PNG_50/random_sampling_report_20250717_024530.txt` |
+
+## Execution
+
+```{bash step2-sampling}
+# Execute random sampling by ISO
+python /mnt/sfs_turbo/R10898/n2n_dataprocess/random_sample_by_iso.py \
+  --input /mnt/data/R10898/ai_jz2_test_PNG \
+  --output /mnt/data/R10898/ai_jz2_test_PNG_50 \
+  --samples_per_iso 50
+
+# Review sampling report
+cat /mnt/data/R10898/ai_jz2_test_PNG_50/random_sampling_report_20250717_024530.txt
+```
+
+## Sampling Analysis
+
+```{r step2-analysis}
+# Read sampling report for analysis
+sampling_report <- "/mnt/data/R10898/ai_jz2_test_PNG_50/random_sampling_report_20250717_024530.txt"
+
+# Analyze ISO distribution in sampled data
+# This would be replaced with actual data reading logic
+cat("Sampling completed successfully\n")
+cat("Check the report file for detailed ISO distribution\n")
+```
+
+---
+
+# Step 3: PNG Set Structuring
+
+## Script Information
+- **Script**: `/mnt/sfs_turbo/R10898/n2n_dataprocess/process_png_sets_standalone.py`
+- **Duration**: ~15 minutes
+- **Purpose**: Structure PNGs to sets and associate different images for camera movement detection
+
+## Input/Output
+
+| Parameter | Path |
+|-----------|------|
+| **Input** | `/mnt/data/R10898/ai_jz2_test_PNG_50` |
+| **Output** | `/mnt/data/R10898/ai_jz2_test_PNG_50_sets` |
+| **Summary** | `/mnt/data/R10898/ai_jz2_test_PNG_50_sets/png_sets_processing_report_20250717_031501.txt` |
+
+## Execution
+
+```{bash step3-structuring}
+# Execute PNG set structuring
+python /mnt/sfs_turbo/R10898/n2n_dataprocess/process_png_sets_standalone.py \
+  --input /mnt/data/R10898/ai_jz2_test_PNG_50 \
+  --output /mnt/data/R10898/ai_jz2_test_PNG_50_sets
+
+# Review processing report
+echo "=== PNG Sets Processing Report ==="
+cat /mnt/data/R10898/ai_jz2_test_PNG_50_sets/png_sets_processing_report_20250717_031501.txt
+```
+
+## Set Structure Validation
+
+```{bash step3-validation}
+# Analyze set structure
+echo "=== Set Structure Analysis ==="
+echo "Total sets created:"
+find /mnt/data/R10898/ai_jz2_test_PNG_50_sets -maxdepth 1 -type d | wc -l
+
+echo "Sample set structure:"
+find /mnt/data/R10898/ai_jz2_test_PNG_50_sets -maxdepth 2 -type d | head -10
+```
+
+---
+
+# Manual Quality Control Phase
+
+## Data Segmentation for Manual Review
+
+After automated processing, the data requires manual quality assessment by interns.
+
+### Manual Process Workflow:
+
+1. **Distribution**: PNG sets are distributed to interns for manual review
+2. **Classification**: Interns manually categorize sets into:
+   - ✅ **Qualified folder**: High-quality image sets
+   - ❌ **Unqualified folder**: Poor-quality image sets
+3. **Collection**: Processed data collected from individual intern laptops
+
+```{bash manual-setup}
+# Prepare directories for manual review distribution
+# This would typically be done on individual intern machines
+
+echo "=== Manual Review Setup ==="
+echo "1. Create qualified/unqualified directories on intern laptops"
+echo "2. Distribute PNG sets for manual review"
+echo "3. Interns classify sets based on quality criteria"
+
+# Example directory structure for interns:
+# ~/manual_review/
+# ├── qualified/
+# ├── unqualified/
+# └── original_sets/
+```
+
+## Data Collection from Interns
+
+```{bash manual-collection}
+# Collect manually processed data from interns
+# Merge back on 114 server to restore original directory structure
+
+echo "=== Data Collection Process ==="
+echo "1. Collect qualified/unqualified classifications from each intern"
+echo "2. Merge data back to 114 server"
+echo "3. Restore original directory structure with quality labels"
+```
+
+---
+
+# Final Processing & ISO Reorganization
+
+## Script Information
+- **Script**: `/mnt/sfs_turbo/R10898/n2n_dataprocess/reorganize_by_iso.py`
+- **Purpose**: Restructure datasets based on ISO values for training and generate distribution plot
+
+**TODO:** 🔍 *Might need to adjust the "qualified" and PNGs folders level?*
+
+## Input/Output
+
+| Parameter | Path |
+|-----------|------|
+| **Input** | `/mnt/data/R10898/ai_jz2_test_PNG_50_sets` |
+| **Output Dataset** | `/mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO` |
+| **Output Plot** | `/mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO/iso_distribution_plot_20250717_033018.png` |
+
+## Execution
+
+```{bash final-processing}
+# Execute ISO-based reorganization
+python /mnt/sfs_turbo/R10898/n2n_dataprocess/reorganize_by_iso.py \
+  --input /mnt/data/R10898/ai_jz2_test_PNG_50_sets \
+  --output /mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO \
+  --generate_plot true
+
+echo "=== Final Dataset Structure ==="
+ls -la /mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO/
+```
+
+## ISO Distribution Analysis
+
+```{r iso-analysis}
+# Analyze ISO distribution in final dataset
+# Note: This would require actual data reading in a real implementation
+
+cat("=== ISO Distribution Analysis ===\n")
+cat("Plot generated: iso_distribution_plot_20250717_033018.png\n")
+cat("Dataset organized by ISO values for training\n")
+
+# If the plot file exists, we could include it
+plot_path <- "/mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO/iso_distribution_plot_20250717_033018.png"
+cat(paste("Plot file location:", plot_path, "\n"))
+```
+
+---
+
+# Project Deliverables
+
+## Final Distribution
+
+### 1. Training Dataset
+- **Recipient**: 周哥
+- **Content**: Restructured dataset organized by ISO values
+- **Location**: `/mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO`
+
+### 2. Analysis Report
+- **Recipient**: Data Collection Team
+- **Content**: ISO distribution plot and processing summary
+- **Location**: `iso_distribution_plot_20250717_033018.png`
+
+```{bash deliverables}
+echo "=== Project Deliverables Summary ==="
+echo "1. Training Dataset for 周哥:"
+du -sh /mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO
+
+echo "2. ISO Distribution Plot for Collection Team:"
+ls -la /mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO/*.png
+```
+
+---
+
+# Quality Metrics & Summary
+
+## Processing Statistics
+
+```{r quality-metrics}
+# Summary of processing pipeline
+cat("=== Processing Pipeline Summary ===\n")
+
+stages <- data.frame(
+  Stage = c("Raw Data", "PNG Conversion", "Random Sampling", "Set Structuring", "Manual Review", "ISO Organization"),
+  Duration = c("N/A", "~15 min", "~1 min", "~15 min", "Manual", "Variable"),
+  Input_Location = c("/mnt/data/R10898/ai_jz2_test", 
+                    "/mnt/data/R10898/ai_jz2_test",
+                    "/mnt/data/R10898/ai_jz2_test_PNG",
+                    "/mnt/data/R10898/ai_jz2_test_PNG_50",
+                    "/mnt/data/R10898/ai_jz2_test_PNG_50_sets",
+                    "/mnt/data/R10898/ai_jz2_test_PNG_50_sets"),
+  Output_Location = c("N/A",
+                     "/mnt/data/R10898/ai_jz2_test_PNG",
+                     "/mnt/data/R10898/ai_jz2_test_PNG_50", 
+                     "/mnt/data/R10898/ai_jz2_test_PNG_50_sets",
+                     "Intern laptops",
+                     "/mnt/data/R10898/ai_jz2_test_PNG_50_sets_ISO")
+)
+
+kable(stages, caption = "Image Denoise Project Processing Pipeline")
+```
+
+## Outstanding TODOs
+
+```{r todos}
+todos <- data.frame(
+  Priority = c("High", "Medium"),
+  Task = c("Resolve data usage tracking and 114 server writing permissions",
+           "Evaluate and potentially adjust qualified/PNGs folder hierarchy"),
+  Location = c("Data Access Phase", "Final Processing Phase"),
+  Status = c("Open", "Open")
+)
+
+kable(todos, caption = "Outstanding Project TODOs")
+```
+
+---
+
+# Appendix
+
+## File Structure Overview
+
+```
+/mnt/data/R10898/
+├── ai_jz2_test/                    # Raw input data
+├── ai_jz2_test_PNG/               # Step 1 output
+├── ai_jz2_test_PNG_50/            # Step 2 output  
+├── ai_jz2_test_PNG_50_sets/       # Step 3 output
+└── ai_jz2_test_PNG_50_sets_ISO/   # Final output
+```
+
+## Script Locations
+
+```
+/mnt/sfs_turbo/R10898/n2n_dataprocess/
+├── yuv420nv12_processor.py        # Format conversion
+├── random_sample_by_iso.py        # ISO sampling
+├── process_png_sets_standalone.py # Set structuring
+└── reorganize_by_iso.py           # Final organization
+```
+
+---
+
+*Document generated on `r Sys.Date()` for the Image Denoise Project workflow documentation.* 
